@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler'
 import Post from '../models/postModel.js'
 import Author from '../models/authorModels.js'
+import redisClient from '../config/redisClient.js'
 
 // Controller to create a new Post
 const createPost = asyncHandler(async (req, res) => {
@@ -48,15 +49,28 @@ const getAllPosts = asyncHandler(async (req, res) => {
 // Controller to get post by ID
 const getPostById = asyncHandler(async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id).populate('author', 'firstName lastName')
+        const postId = req.params.id
+        //check if the chached data is in redis
+        const cachedData = await redisClient.get(postId)
 
-        if (post) {
+        if (cachedData) {
+            res.status(200).json({
+                post: JSON.parse(cachedData)
+            })
+        } else {
+            // If author data is not in Redis, fetch it from the database
+            const post = await Post.findById(postId).populate('author', 'firstName lastName')
+
+            if (!post) {
+                res.status(404);
+                throw new Error('Post not found');
+            }
+
+            await redisClient.setEx(postId, 300, JSON.stringify(post))
+
             res.status(200).json({
                 post: post
-            });
-        } else {
-            res.status(404);
-            throw new Error('Post not found');
+            })
         }
     } catch (error) {
         res.status(500).json({ error: error.message });

@@ -5,10 +5,13 @@ import errorHandler from './middleware/errorMiddleware.js'
 import colors from 'colors'
 import authorRoutes from './routes/authorRoutes.js'
 import postRoutes from './routes/postRoutes.js'
+import redis from 'redis'
+import redisClient from './config/redisClient.js'
 
 dotenv.config()
 const app = express()
 connectDB()
+redisClient.connect()
 
 const PORT = process.env.PORT || 4000
 
